@@ -2,22 +2,28 @@
 
 一款 Android 晕动舒缓辅助应用，通过运动传感器与悬浮视觉提示，尝试帮助用户在乘车等场景中减轻视觉与运动感受之间的不适。
 
-- 当前版本：**1.76**
+- 当前版本：**1.81**
 - 应用包名：`com.ljj.yundongshuhuan`
 - 最低 Android 版本：Android 8.0（API 26）
-- 主要能力：运动状态检测（静止 / 正在左转 / 正在右转 / 加速 / 减速）、姿态角显示、GPS 卫星 / 网络定位信息面板、动态粒子气泡悬浮层（转向反向光流）、灵敏度与颜色设置
+- 主要能力：双轴反向光流气泡（左右转向 + 前后加减速，前后灵敏度已增强）、运动状态检测（静止 / 正在左转 / 正在右转 / 加速 / 减速）、姿态角显示、GPS 卫星 / 网络定位信息面板、灵敏度与颜色设置
 - 界面使用 Jetpack Compose。全局页面表面、卡片、按钮、滑块和选项采用 [PrismalAGSL](https://github.com/styropyr0/PrismalAGSL)（MIT）实现液态玻璃；底部导航栏保留 [LiquidGlassBar](https://github.com/wzhdgithub/LiquidGlassBar)（GPL-3.0-or-later）。
 
 ## 下载
 
-正式 APK 请前往 [GitHub Releases](https://github.com/liangfangfa0-afk/MotionGuard/releases/tag/v1.76) 下载 `MotionGuard-v1.76.apk`。
+正式 APK 请前往 [GitHub Releases](https://github.com/liangfangfa0-afk/MotionGuard/releases/tag/v1.81) 下载 `MotionGuard-v1.81.apk`。
 
-SHA-256：`02d4918593a73961d42e3d975a67f1ae0fb45eecf0fd2ac339721804eb808f45`
+SHA-256：`1d457a0ee63c9b45638a8b00b0a2de46cbcd0973d94483321a5ab6cea28f9028`
+
+## v1.81 更新要点
+
+- 前后（纵向）加速度响应明显增强：分母 3.2 → 1.8，纵向速度 165dp → 210dp
+- 左右转向手感保持不变
+- 气泡效果仍为"与车辆运动反向的平滑平移"，不做随机飘浮
 
 ## 构建环境
 
 - JDK 17
-- Gradle 8.13
+- Gradle 8.14.4
 - Android Gradle Plugin 8.13.0
 - compileSdk 37
 
