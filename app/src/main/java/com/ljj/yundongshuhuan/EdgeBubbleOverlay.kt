@@ -73,7 +73,8 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             targetTurn = (yawRate * turnGain).coerceIn(-1.0f, 1.0f)
             targetX = ((-x / 3.2f) * gain + targetTurn).coerceIn(-1.0f, 1.0f)
             // 纵向：与车辆前后运动反向。fy>0(向前加速) 时气泡向屏幕下方(+y)流
-            targetY = ((y / 3.2f) * gain).coerceIn(-1.0f, 1.0f)
+            // 纵向分母调小（3.2→1.8），让前后加减速更明显
+            targetY = ((y / 1.8f) * gain).coerceIn(-1.0f, 1.0f)
             val level = (0.55f + magnitude * 0.30f).coerceIn(0f, 1f)
             motionLevel += (level - motionLevel) * 0.15f
             targetAlpha = (0.62f + motionLevel * 0.38f).coerceIn(0f, 1f)
@@ -134,7 +135,7 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
         flowY += (targetY - flowY) * response
         flowTurn += (targetTurn - flowTurn) * response
         val velocityX = (flowX + flowTurn) * dp(190f)
-        val velocityY = flowY * dp(165f)
+        val velocityY = flowY * dp(210f)
 
         fill.color = colors[paletteIndex]
 
