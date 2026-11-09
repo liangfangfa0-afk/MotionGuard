@@ -2,11 +2,12 @@ package com.ljj.yundongshuhuan
 
 import android.content.Intent
 import android.os.Bundle
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -51,7 +52,6 @@ fun SplashScreen(onFinish: () -> Unit) {
     var visible by remember { mutableStateOf(false) }
     var finished by remember { mutableStateOf(false) }
 
-    // 加载三张图
     val images = remember {
         listOf("charity/charity1.jpg", "charity/charity2.jpg", "charity/charity3.jpg").map { path ->
             try {
@@ -61,15 +61,12 @@ fun SplashScreen(onFinish: () -> Unit) {
         }
     }
 
-    // 文字渐变动画：标题从透明渐变到显示
     LaunchedEffect(Unit) {
         visible = true
-        // 三张图轮播，每张 1.2 秒
         repeat(3) {
             delay(1200)
             if (it < 2) currentIndex++
         }
-        // 总时长约 3.6 秒后自动结束
         delay(800)
         if (!finished) {
             finished = true
@@ -92,10 +89,9 @@ fun SplashScreen(onFinish: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(60.dp))
 
-            // 顶部文字渐变动画
             AnimatedVisibility(
                 visible = visible,
-                enter = fadeIn(1200) + scaleIn(1200, initialScale = 0.8f)
+                enter = fadeIn(tween(1200))
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
@@ -115,7 +111,6 @@ fun SplashScreen(onFinish: () -> Unit) {
 
             Spacer(modifier = Modifier.height(30.dp))
 
-            // 轮播图片（淡入淡出过渡）
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -126,8 +121,8 @@ fun SplashScreen(onFinish: () -> Unit) {
                     if (bitmap != null) {
                         AnimatedVisibility(
                             visible = currentIndex == index,
-                            enter = fadeIn(600),
-                            exit = fadeOut(600),
+                            enter = fadeIn(tween(600)),
+                            exit = fadeOut(tween(600)),
                             modifier = Modifier.fillMaxSize()
                         ) {
                             Image(
@@ -145,7 +140,6 @@ fun SplashScreen(onFinish: () -> Unit) {
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // 底部跳过按钮
             Button(
                 onClick = {
                     if (!finished) {
