@@ -4,9 +4,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -18,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -49,7 +48,7 @@ class SplashActivity : ComponentActivity() {
 fun SplashScreen(onFinish: () -> Unit) {
     val context = LocalContext.current
     var currentIndex by remember { mutableStateOf(0) }
-    var visible by remember { mutableStateOf(false) }
+    var titleAlpha by remember { mutableStateOf(0f) }
     var finished by remember { mutableStateOf(false) }
 
     val images = remember {
@@ -62,7 +61,7 @@ fun SplashScreen(onFinish: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        visible = true
+        titleAlpha = 1f
         repeat(3) {
             delay(1200)
             if (it < 2) currentIndex++
@@ -89,24 +88,22 @@ fun SplashScreen(onFinish: () -> Unit) {
         ) {
             Spacer(modifier = Modifier.height(60.dp))
 
-            AnimatedVisibility(
-                visible = visible,
-                enter = fadeIn(tween(1200))
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.alpha(titleAlpha)
             ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = "晕动舒缓",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "请助力公益 · 帮助宝贝回家",
-                        fontSize = 16.sp,
-                        color = Color(0xFFFFE0B2)
-                    )
-                }
+                Text(
+                    text = "晕动舒缓",
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "请助力公益 · 帮助宝贝回家",
+                    fontSize = 16.sp,
+                    color = Color(0xFFFFE0B2)
+                )
             }
 
             Spacer(modifier = Modifier.height(30.dp))
@@ -117,23 +114,20 @@ fun SplashScreen(onFinish: () -> Unit) {
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                images.forEachIndexed { index, bitmap ->
-                    if (bitmap != null) {
-                        AnimatedVisibility(
-                            visible = currentIndex == index,
-                            enter = fadeIn(tween(600)),
-                            exit = fadeOut(tween(600)),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            Image(
-                                bitmap = bitmap,
-                                contentDescription = "寻人启事 $index",
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(16.dp)),
-                                contentScale = ContentScale.Fit
-                            )
-                        }
+                Crossfade(
+                    targetState = currentIndex,
+                    animationSpec = tween(600),
+                    modifier = Modifier.fillMaxSize()
+                ) { index ->
+                    images.getOrNull(index)?.let { bitmap ->
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = "寻人启事 $index",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp)),
+                            contentScale = ContentScale.Fit
+                        )
                     }
                 }
             }
