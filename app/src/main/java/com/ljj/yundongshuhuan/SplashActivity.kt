@@ -49,24 +49,32 @@ fun SplashScreen(onFinish: () -> Unit) {
     val context = LocalContext.current
     var currentIndex by remember { mutableStateOf(0) }
     var titleAlpha by remember { mutableStateOf(0f) }
+    var titleVisible by remember { mutableStateOf(true) }
     var finished by remember { mutableStateOf(false) }
 
+    val imageCount = 7
     val images = remember {
-        listOf("charity/charity1.jpg", "charity/charity2.jpg", "charity/charity3.jpg").map { path ->
+        (1..imageCount).map { i ->
             try {
-                val input: InputStream = context.assets.open(path)
+                val input: InputStream = context.assets.open("charity/charity$i.jpg")
                 android.graphics.BitmapFactory.decodeStream(input).asImageBitmap()
             } catch (e: Exception) { null }
         }
     }
 
     LaunchedEffect(Unit) {
+        // 第一阶段：文字动画显示 1.2 秒
         titleAlpha = 1f
-        repeat(3) {
-            delay(1200)
-            if (it < 2) currentIndex++
+        delay(1200)
+        // 文字淡出
+        titleAlpha = 0f
+        titleVisible = false
+        // 第二阶段：图片轮播，每张 0.7 秒
+        repeat(imageCount) {
+            delay(700)
+            if (it < imageCount - 1) currentIndex++
         }
-        delay(800)
+        delay(300)
         if (!finished) {
             finished = true
             onFinish()
@@ -86,24 +94,27 @@ fun SplashScreen(onFinish: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(60.dp))
+            Spacer(modifier = Modifier.height(80.dp))
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.alpha(titleAlpha)
-            ) {
-                Text(
-                    text = "晕动舒缓",
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color.White
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "请助力公益 · 帮助宝贝回家",
-                    fontSize = 16.sp,
-                    color = Color(0xFFFFE0B2)
-                )
+            if (titleVisible || titleAlpha > 0f) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.alpha(titleAlpha)
+                ) {
+                    Text(
+                        text = "科技不再是高高在上",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "而是服务于人民",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFE0B2)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(30.dp))
@@ -111,18 +122,18 @@ fun SplashScreen(onFinish: () -> Unit) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center
             ) {
                 Crossfade(
                     targetState = currentIndex,
-                    animationSpec = tween(600),
+                    animationSpec = tween(500),
                     modifier = Modifier.fillMaxSize()
                 ) { index ->
                     images.getOrNull(index)?.let { bitmap ->
                         Image(
                             bitmap = bitmap,
-                            contentDescription = "寻人启事 $index",
+                            contentDescription = "寻人启事 ${index + 1}",
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clip(RoundedCornerShape(16.dp)),
