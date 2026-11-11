@@ -12,7 +12,7 @@
 
 正式 APK 请前往 [GitHub Releases](https://github.com/liangfangfa0-afk/MotionGuard/releases/tag/v1.83) 下载 `MotionGuard-v1.83.apk`。
 
-SHA-256：`1d457a0ee63c9b45638a8b00b0a2de46cbcd0973d94483321a5ab6cea28f9028`
+SHA-256：`fab48bf915b39708492e671ac2c528a9f9a446cdc03c8cff9ad928af62829c75`
 
 ## v1.83 更新要点
 
