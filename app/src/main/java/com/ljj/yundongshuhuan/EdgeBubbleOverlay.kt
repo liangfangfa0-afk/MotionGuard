@@ -77,7 +77,7 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             targetY = ((y / 1.8f) * gain).coerceIn(-1.0f, 1.0f)
             val level = (0.55f + magnitude * 0.30f).coerceIn(0f, 1f)
             motionLevel += (level - motionLevel) * 0.15f
-            targetAlpha = (0.62f + motionLevel * 0.38f).coerceIn(0f, 1f)
+            targetAlpha = 1f
         }
         postInvalidateOnAnimation()
     }
@@ -90,7 +90,7 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             particles += Particle(
                 x = (0.045f + random.nextFloat() * 0.09f) * w,
                 y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
-                radius = dp(6f + random.nextFloat() * 4.5f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
                 alpha = 0f,
                 side = -1,
                 driftY = (random.nextFloat() - 0.5f) * dp(6f),
@@ -103,7 +103,7 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             particles += Particle(
                 x = (0.865f + random.nextFloat() * 0.09f) * w,
                 y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
-                radius = dp(6f + random.nextFloat() * 4.5f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
                 alpha = 0f,
                 side = +1,
                 driftY = (random.nextFloat() - 0.5f) * dp(6f),
@@ -176,7 +176,7 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             if (finalAlpha < 0.02f) return@forEach
 
             val sizePulse = 1f + p.sizeAmplitude * sin(elapsed * 0.8f + p.phase)
-            fill.alpha = (finalAlpha * 255f).toInt().coerceIn(0, 255)
+            fill.alpha = if (edgeScale < 1f) (edgeScale * 255f).toInt().coerceIn(0, 255) else 255
             canvas.drawCircle(p.x, p.y, p.radius * sizePulse, fill)
         }
         postInvalidateOnAnimation()
