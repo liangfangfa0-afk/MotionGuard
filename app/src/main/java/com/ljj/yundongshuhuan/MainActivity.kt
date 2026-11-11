@@ -137,20 +137,40 @@ class MainActivity : ComponentActivity() {
         val lm = locationManager ?: return
         if (locationListening) return
         if (!hasLocationPermission()) return
+
+        var gpsOk = false
+        var netOk = false
+
+        // GPS 单独兜底：只有粗定位权限时访问 GPS 可能抛 SecurityException，不能连累网络分支
         try {
             if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 2000L, 0f, locationListener)
-                gpsProvider = "GPS 定位中…"
+                gpsOk = true
             }
+        } catch (_: SecurityException) { }
+          catch (_: IllegalArgumentException) { }
+
+        // 网络定位单独兜底
+        try {
             if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
                 lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 2000L, 0f, locationListener)
-                if (gpsProvider == "GPS 定位中…") gpsProvider = "GPS/网络定位中…"
+                netOk = true
             }
-            locationListening = true
-        } catch (_: SecurityException) {
-            gpsProvider = "未授权定位"
-        } catch (_: IllegalArgumentException) {
-            gpsProvider = "定位不可用"
+        } catch (_: SecurityException) { }
+          catch (_: IllegalArgumentException) { }
+
+        // 最近一次已知定位先填到界面，避免定位一直空白
+        val lastKnown = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+            .mapNotNull { runCatching { lm.getLastKnownLocation(it) }.getOrNull() }
+            .maxByOrNull { it.time }
+        lastKnown?.let { locationListener.onLocationChanged(it) }
+
+        locationListening = gpsOk || netOk
+        gpsProvider = when {
+            gpsOk && netOk -> "GPS/网络定位中…"
+            gpsOk -> "GPS 定位中…"
+            netOk -> "网络定位中…"
+            else -> "定位不可用"
         }
     }
 
