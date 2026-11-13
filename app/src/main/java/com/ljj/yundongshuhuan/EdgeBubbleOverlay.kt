@@ -9,12 +9,12 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-/** 两侧常驻气泡：左 10 右 10；静止收回两侧并渐隐，运动时平滑流动。 */
+/** 三竖排常驻气泡：左 10、中 10、右 10；静止收回各自竖位并渐隐，运动时平滑流动。 */
 class EdgeBubbleOverlay(context: Context) : View(context) {
     private data class Particle(
         var x: Float, var y: Float, val radius: Float,
         var alpha: Float,
-        val side: Int,            // -1 = 左侧, +1 = 右侧
+        val side: Int,            // -1 = 左侧, 0 = 中间, +1 = 右侧
         val driftY: Float,
         val phase: Float,
         val sizeAmplitude: Float
@@ -101,6 +101,19 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
         repeat(10) { i ->
             val ty = (i + 0.5f) / 10f
             particles += Particle(
+                x = (0.475f + random.nextFloat() * 0.05f) * w,
+                y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
+                alpha = 0f,
+                side = 0,
+                driftY = (random.nextFloat() - 0.5f) * dp(6f),
+                phase = random.nextFloat() * 6.28f,
+                sizeAmplitude = 0.03f + random.nextFloat() * 0.03f
+            )
+        }
+        repeat(10) { i ->
+            val ty = (i + 0.5f) / 10f
+            particles += Particle(
                 x = (0.865f + random.nextFloat() * 0.09f) * w,
                 y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
                 radius = dp(7.5f + random.nextFloat() * 1.5f),
@@ -141,12 +154,17 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
 
         val leftHomeX = 0.055f * w
         val rightHomeX = 0.945f * w
+        val middleHomeX = 0.5f * w
         val homeFollow = 1f - exp(-dt * 2.2f)
 
         particles.forEach { p ->
-            // 位置：静止收回各自一侧；运动时全屏自由流动，不做半屏限制
+            // 位置：静止收回各自竖位；运动时全屏自由流动，不做半屏限制
             if (stationary) {
-                val home = if (p.side < 0) leftHomeX else rightHomeX
+                val home = when (p.side) {
+                    -1 -> leftHomeX
+                    +1 -> rightHomeX
+                    else -> middleHomeX
+                }
                 p.x += (home - p.x) * homeFollow
             } else {
                 p.x += velocityX * dt
@@ -166,11 +184,12 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             // 渐隐：按目标透明度平滑过渡（静止淡出、运动淡入）
             p.alpha += (targetAlpha - p.alpha) * (1f - exp(-dt * 2.6f))
 
-            // 贴边额外渐隐，让收进去的气泡自然消失
-            val edgeScale = if (p.side < 0)
-                (p.x / (0.075f * w)).coerceIn(0f, 1f)
-            else
-                ((w - p.x) / (0.075f * w)).coerceIn(0f, 1f)
+            // 贴边额外渐隐，让收进去的气泡自然消失；中间竖列不靠边，不做边距渐隐
+            val edgeScale = when {
+                p.side < 0 -> (p.x / (0.075f * w)).coerceIn(0f, 1f)
+                p.side > 0 -> ((w - p.x) / (0.075f * w)).coerceIn(0f, 1f)
+                else -> 1f
+            }
             val finalAlpha = (p.alpha * edgeScale).coerceIn(0f, 1f)
 
             if (finalAlpha < 0.02f) return@forEach
