@@ -71,6 +71,11 @@ class MainActivity : ComponentActivity() {
     private var receiverRegistered = false
     private var waitingPermission = false
     private var locationManager: LocationManager? = null
+    // 分别缓存两路定位；GPS 优先，只有丢星超时才回落到网络
+    private var lastGps: Location? = null
+    private var lastNet: Location? = null
+    private var lastGpsArrival = 0L
+    private var lastNetArrival = 0L
     private var locationListening = false
     private val locationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -83,12 +88,13 @@ class MainActivity : ComponentActivity() {
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
-            gpsProvider = if (location.provider == LocationManager.GPS_PROVIDER) "GPS 定位" else "网络定位"
-            gpsLat = String.format(Locale.US, "%.5f", location.latitude)
-            gpsLng = String.format(Locale.US, "%.5f", location.longitude)
-            gpsSpeed = if (location.hasSpeed())
-                String.format(Locale.US, "%.1f m/s", location.speed)
-            else "--"
+            val now = System.currentTimeMillis()
+            if (location.provider == LocationManager.GPS_PROVIDER) {
+                lastGps = location; lastGpsArrival = now
+            } else {
+                lastNet = location; lastNetArrival = now
+            }
+            pickLocation()?.let { renderLocation(it) }
         }
         override fun onProviderDisabled(provider: String) {
             if (provider == LocationManager.GPS_PROVIDER) gpsProvider = "GPS 已关闭"
@@ -96,6 +102,22 @@ class MainActivity : ComponentActivity() {
         override fun onProviderEnabled(provider: String) {
             gpsProvider = "定位中…"
         }
+    }
+
+    /** GPS 在近 15 秒内有定位就优先用 GPS；否则回落到网络定位，再退到 GPS 缓存。 */
+    private fun pickLocation(): Location? {
+        val now = System.currentTimeMillis()
+        lastGps?.let { if (now - lastGpsArrival < 15000L) return it }
+        return lastNet ?: lastGps
+    }
+
+    private fun renderLocation(location: Location) {
+        gpsProvider = if (location.provider == LocationManager.GPS_PROVIDER) "GPS 定位" else "网络定位"
+        gpsLat = String.format(Locale.US, "%.5f", location.latitude)
+        gpsLng = String.format(Locale.US, "%.5f", location.longitude)
+        gpsSpeed = if (location.hasSpeed())
+            String.format(Locale.US, "%.1f m/s", location.speed)
+        else "--"
     }
 
     private val receiver = object : BroadcastReceiver() {

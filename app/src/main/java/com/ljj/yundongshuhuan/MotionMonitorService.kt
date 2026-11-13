@@ -157,6 +157,8 @@ class MotionMonitorService : Service(), SensorEventListener {
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
+            // 速度差分只采用 GPS；网络定位的速度是基站/WiFi 估算，不可靠，不混入样本
+            if (location.provider != LocationManager.GPS_PROVIDER) return
             if (!location.hasSpeed()) return
             val v = location.speed.coerceAtLeast(0f)
             gpsSpeed = v
@@ -196,15 +198,10 @@ class MotionMonitorService : Service(), SensorEventListener {
     private fun startLocation() {
         val lm = getSystemService(LOCATION_SERVICE) as? LocationManager ?: return
         locationManager = lm
+        // 速度差分只接 GPS；网络定位速度不可靠，不在此注册
         try {
             if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
                 lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, locationListener)
-                locationListening = true
-            }
-        } catch (_: SecurityException) { } catch (_: IllegalArgumentException) { }
-        try {
-            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
-                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000L, 0f, locationListener)
                 locationListening = true
             }
         } catch (_: SecurityException) { } catch (_: IllegalArgumentException) { }
