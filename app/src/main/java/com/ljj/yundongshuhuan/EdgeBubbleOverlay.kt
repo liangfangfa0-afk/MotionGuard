@@ -54,12 +54,13 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
     }
 
     /**
-     * 驱动气泡：横向(左右) + 纵向(前后) 双轴反向光流。
+     * 驱动气泡：横向(左右) 由侧向加速度/yaw 驱动，纵向(前后) 由 GPS 有符号加速度驱动。
      * - 车左转 → 气泡向右流；右转 → 向左流
-     * - 车加速(fy>0，向前) → 气泡向屏幕下方流；减速 → 向上流（与车辆运动反向）
-     * - 静止：收回两侧并渐隐
+     * - 车速在涨(forwardAccel>0) → 气泡向屏幕下方流；车速在掉 → 向上流（与车辆运动反向）
+     * - 静止：收回各自竖列并渐隐
+     * @param forwardAccel 沿行驶方向的有符号加速度（m/s²），由 GPS 速度趋势算出，跟手机摆放无关
      */
-    fun updateMotion(x: Float, y: Float, magnitude: Float, yawRate: Float, isStationary: Boolean) {
+    fun updateMotion(x: Float, forwardAccel: Float, magnitude: Float, yawRate: Float, isStationary: Boolean) {
         val gain = sensitivity / 2.4f
         stationary = isStationary
         if (stationary) {
@@ -72,9 +73,9 @@ class EdgeBubbleOverlay(context: Context) : View(context) {
             val turnGain = sensitivity * 0.50f
             targetTurn = (yawRate * turnGain).coerceIn(-1.0f, 1.0f)
             targetX = ((-x / 3.2f) * gain + targetTurn).coerceIn(-1.0f, 1.0f)
-            // 纵向：与车辆前后运动反向。fy>0(向前加速) 时气泡向屏幕下方(+y)流
-            // 纵向分母调小（3.2→1.8），让前后加减速更明显
-            targetY = ((y / 1.8f) * gain).coerceIn(-1.0f, 1.0f)
+            // 纵向：与车辆前后运动反向。车速上升(forwardAccel>0) 时气泡向屏幕下方(+y)流
+            // 分母 2.4 适配 m/s² 量级，让常见的 1~3 m/s² 落在有辨识度的区间
+            targetY = ((forwardAccel / 2.4f) * gain).coerceIn(-1.0f, 1.0f)
             val level = (0.55f + magnitude * 0.30f).coerceIn(0f, 1f)
             motionLevel += (level - motionLevel) * 0.15f
             targetAlpha = 1f

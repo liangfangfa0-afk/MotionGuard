@@ -5,6 +5,9 @@ import android.content.*
 import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.hardware.*
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import android.os.*
 import android.provider.Settings
 import android.view.Gravity
@@ -34,6 +37,7 @@ class MotionMonitorService : Service(), SensorEventListener {
         const val EXTRA_AZIMUTH = "azimuth"
         const val EXTRA_YAW_RATE = "yaw_rate"
         const val EXTRA_STATIONARY = "stationary"
+        const val EXTRA_FORWARD = "forward_accel"
         private const val CHANNEL_ID = "motion_monitor"
         private const val NOTIFICATION_ID = 41
     }
@@ -76,6 +80,17 @@ class MotionMonitorService : Service(), SensorEventListener {
     private var stationary = false
     private val window = ArrayDeque<Float>()
     private var sumSquares = 0.0
+
+    // GPS 速度差分：判前后加减速（不受手机摆放朝向影响）
+    private var locationManager: LocationManager? = null
+    private class SpeedSample(val t: Long, val v: Float)
+    private val speedSamples = ArrayList<SpeedSample>()
+    private var forwardAccel = 0f
+    private var gpsSpeed = 0f
+    private var hasGpsSpeed = false
+    private var gpsReady = false
+    private var lastGpsTime = 0L
+    private var locationListening = false
 
     override fun onCreate() {
         super.onCreate()
@@ -135,8 +150,75 @@ class MotionMonitorService : Service(), SensorEventListener {
             return
         }
         getSharedPreferences("yundongshuhuan", MODE_PRIVATE).edit().putBoolean("running", true).apply()
+        startLocation()
         if (Settings.canDrawOverlays(this)) showOverlay()
         broadcast("屏幕气泡已开启")
+    }
+
+    private val locationListener = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            if (!location.hasSpeed()) return
+            val v = location.speed.coerceAtLeast(0f)
+            gpsSpeed = v
+            val now = System.currentTimeMillis()
+            lastGpsTime = now
+            speedSamples.add(SpeedSample(now, v))
+            // 只保留最近 3 秒的速度样本：窗口够长能压噪声，又不至于让刹车判定拖太久
+            while (speedSamples.size > 2 && now - speedSamples[0].t > 3000L) speedSamples.removeAt(0)
+            if (speedSamples.size >= 3) {
+                val a = linearAccel()
+                if (!a.isNaN() && abs(a) <= 6f) {
+                    forwardAccel += 0.75f * (a - forwardAccel)
+                    hasGpsSpeed = true
+                    gpsReady = true
+                }
+            }
+        }
+        override fun onProviderDisabled(provider: String) {}
+        override fun onProviderEnabled(provider: String) {}
+    }
+
+    /** 对速度-时间样本做最小二乘拟合，取斜率作为有符号的纵向加速度（m/s²）。 */
+    private fun linearAccel(): Float {
+        val n = speedSamples.size
+        if (n < 3) return Float.NaN
+        val t0 = speedSamples[0].t
+        var sumT = 0.0; var sumV = 0.0; var sumTV = 0.0; var sumTT = 0.0
+        speedSamples.forEach { s ->
+            val t = (s.t - t0) / 1000.0
+            sumT += t; sumV += s.v.toDouble(); sumTV += t * s.v.toDouble(); sumTT += t * t
+        }
+        val denom = n * sumTT - sumT * sumT
+        if (abs(denom) < 1e-6) return Float.NaN
+        return ((n * sumTV - sumT * sumV) / denom).toFloat()
+    }
+
+    private fun startLocation() {
+        val lm = getSystemService(LOCATION_SERVICE) as? LocationManager ?: return
+        locationManager = lm
+        try {
+            if (lm.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+                lm.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000L, 0f, locationListener)
+                locationListening = true
+            }
+        } catch (_: SecurityException) { } catch (_: IllegalArgumentException) { }
+        try {
+            if (lm.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) {
+                lm.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000L, 0f, locationListener)
+                locationListening = true
+            }
+        } catch (_: SecurityException) { } catch (_: IllegalArgumentException) { }
+    }
+
+    private fun stopLocation() {
+        locationManager?.let { runCatching { it.removeUpdates(locationListener) } }
+        locationManager = null
+        locationListening = false
+        hasGpsSpeed = false
+        gpsReady = false
+        forwardAccel = 0f
+        speedSamples.clear()
+        lastGpsTime = 0L
     }
 
     private fun showOverlay() {
@@ -184,11 +266,18 @@ class MotionMonitorService : Service(), SensorEventListener {
         stationary = false
         window.clear()
         sumSquares = 0.0
+        forwardAccel = 0f
+        gpsSpeed = 0f
+        hasGpsSpeed = false
+        gpsReady = false
+        speedSamples.clear()
+        lastGpsTime = 0L
     }
 
     private fun stopMonitoring() {
         if (running) manager.unregisterListener(this)
         running = false
+        stopLocation()
         removeOverlay()
         getSharedPreferences("yundongshuhuan", MODE_PRIVATE).edit().putBoolean("running", false).apply()
         stopForeground(STOP_FOREGROUND_REMOVE)
@@ -224,10 +313,19 @@ class MotionMonitorService : Service(), SensorEventListener {
         }
         samples++
         val rms = if (window.isEmpty()) 0f else sqrt((sumSquares / window.size).coerceAtLeast(0.0)).toFloat()
+        // GPS 超过 3 秒没有新样本，视为失效：纵向加速度归零，避免残留方向一直推着气泡走
+        val nowMs = System.currentTimeMillis()
+        if (gpsReady && nowMs - lastGpsTime > 3000L) {
+            hasGpsSpeed = false
+            gpsReady = false
+            forwardAccel = 0f
+        }
         val state = currentState(rms, yawRate)
         stationary = state == "静止"
-        overlay?.updateMotion(fx, fy, magnitude, yawRate, stationary)
-        val now = System.currentTimeMillis()
+        // 纵向流动只由 GPS 有符号加速度驱动；没有 GPS 就不纵向推，避免朝向导致的错向
+        val forwardForFlow = if (hasGpsSpeed) forwardAccel else 0f
+        overlay?.updateMotion(fx, forwardForFlow, magnitude, yawRate, stationary)
+        val now = nowMs
         if (now - lastBroadcast >= 200L) {
             lastBroadcast = now
             broadcast(state, magnitude, rms)
@@ -235,7 +333,8 @@ class MotionMonitorService : Service(), SensorEventListener {
                 NOTIFICATION_ID,
                 buildNotification(
                     "$state · " + String.format(Locale.US, "横滚%.0f° 俯仰%.0f°", roll, pitch) +
-                    " · RMS " + String.format(Locale.US, "%.2f", rms) + " m/s²"
+                    " · RMS " + String.format(Locale.US, "%.2f", rms) + " m/s²" +
+                    if (hasGpsSpeed) " · 速度 " + String.format(Locale.US, "%.1f", gpsSpeed) + " m/s" else ""
                 )
             )
         }
@@ -281,13 +380,20 @@ class MotionMonitorService : Service(), SensorEventListener {
     }
 
     private fun currentState(rms: Float, yaw: Float): String {
-        val still = rms < 0.14f && abs(yaw) < 0.10f
+        // 车辆在匀速行驶时传感器几乎没有加速度，不能因此判成"静止"把气泡收起来
+        val movingByGps = gpsReady && gpsSpeed > 1.0f
+        val still = !movingByGps && rms < 0.14f && abs(yaw) < 0.10f
+        // 前后加减速只看 GPS 速度趋势：速度明显在涨为加速，明显在掉为减速。
+        // 不用设备坐标轴，手机怎么摆放都不影响判定。
+        val accelUp = movingByGps && forwardAccel > 0.30f
+        val accelDown = movingByGps && forwardAccel < -0.30f
         return when {
             still -> "静止"
             yaw > 0.12f -> "正在左转"
             yaw < -0.12f -> "正在右转"
-            fy > 0.16f -> "正在加速"
-            fy < -0.16f -> "正在减速"
+            accelUp -> "正在加速"
+            accelDown -> "正在减速"
+            movingByGps -> if (gpsSpeed > 12f) "高速行驶" else "平稳行驶"
             rms < 0.45f -> "轻微运动"
             rms < 1.10f -> "持续运动"
             else -> "明显颠簸"
@@ -308,6 +414,7 @@ class MotionMonitorService : Service(), SensorEventListener {
             putExtra(EXTRA_AZIMUTH, azimuth)
             putExtra(EXTRA_YAW_RATE, yawRate)
             putExtra(EXTRA_STATIONARY, stationary)
+            putExtra(EXTRA_FORWARD, if (hasGpsSpeed) forwardAccel else 0f)
         })
     }
 

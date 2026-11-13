@@ -63,6 +63,7 @@ class MainActivity : ComponentActivity() {
     var pitch by mutableFloatStateOf(0f); private set
     var azimuth by mutableFloatStateOf(0f); private set
     var yawRate by mutableFloatStateOf(0f); private set
+    var forwardAccel by mutableFloatStateOf(0f); private set
     var gpsProvider by mutableStateOf("未定位"); private set
     var gpsLat by mutableStateOf("--"); private set
     var gpsLng by mutableStateOf("--"); private set
@@ -86,7 +87,7 @@ class MainActivity : ComponentActivity() {
             gpsLat = String.format(Locale.US, "%.5f", location.latitude)
             gpsLng = String.format(Locale.US, "%.5f", location.longitude)
             gpsSpeed = if (location.hasSpeed())
-                String.format(Locale.US, "%.1f km/h", location.speed * 3.6f)
+                String.format(Locale.US, "%.1f m/s", location.speed)
             else "--"
         }
         override fun onProviderDisabled(provider: String) {
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
             pitch = intent.getFloatExtra(MotionMonitorService.EXTRA_PITCH, 0f)
             azimuth = intent.getFloatExtra(MotionMonitorService.EXTRA_AZIMUTH, 0f)
             yawRate = intent.getFloatExtra(MotionMonitorService.EXTRA_YAW_RATE, 0f)
+            forwardAccel = intent.getFloatExtra(MotionMonitorService.EXTRA_FORWARD, 0f)
         }
     }
 
@@ -390,6 +392,21 @@ private fun HomePage(a: MainActivity, backdrop: PrismalBackdrop, modifier: Modif
                     Text(String.format(Locale.US, "%.2f rad/s", a.yawRate), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        if (a.forwardAccel > 0.3f) Icons.Rounded.TrendingUp
+                        else if (a.forwardAccel < -0.3f) Icons.Rounded.TrendingDown
+                        else Icons.Rounded.Timeline,
+                        null, tint = Palette[a.paletteIndex], modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("纵向加速度（GPS）", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Spacer(Modifier.weight(1f))
+                    Text(
+                        String.format(Locale.US, "%+.2f m/s²", a.forwardAccel),
+                        color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium
+                    )
+                }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.GpsFixed, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
