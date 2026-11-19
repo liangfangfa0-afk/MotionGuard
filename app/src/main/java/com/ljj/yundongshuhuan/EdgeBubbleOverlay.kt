@@ -1,0 +1,207 @@
+package com.ljj.yundongshuhuan
+
+import android.content.Context
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.view.View
+import kotlin.math.exp
+import kotlin.math.sin
+import kotlin.math.sqrt
+import kotlin.random.Random
+
+/** 三竖排常驻气泡：左 10、中 10、右 10；静止收回各自竖位并渐隐，运动时平滑流动。 */
+class EdgeBubbleOverlay(context: Context) : View(context) {
+    private data class Particle(
+        var x: Float, var y: Float, val radius: Float,
+        var alpha: Float,
+        val side: Int,            // -1 = 左侧, 0 = 中间, +1 = 右侧
+        val driftY: Float,
+        val phase: Float,
+        val sizeAmplitude: Float
+    )
+
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+        style = Paint.Style.FILL
+        alpha = 255
+    }
+    private val particles = ArrayList<Particle>()
+    // 与设置页的四组主题色保持一致；仅调整绘制颜色，不改变粒子运动算法。
+    private val colors = intArrayOf(
+        0xFF2787D9.toInt(),
+        0xFFE47B42.toInt(),
+        0xFF65A77B.toInt(),
+        0xFF8872C8.toInt()
+    )
+    private var fieldWidth = 0f
+    private var fieldHeight = 0f
+    private var lastFrameNanos = 0L
+    private var flowX = 0f
+    private var flowY = 0f
+    private var flowTurn = 0f
+    private var targetX = 0f
+    private var targetY = 0f
+    private var targetTurn = 0f
+    private var targetAlpha = 0f
+    private var motionLevel = 0f
+    private var sensitivity = 4.0f
+    private var paletteIndex = 0
+    private var elapsed = 0f
+    private var stationary = false
+
+    fun setStyle(value: Float, palette: Int) {
+        sensitivity = value.coerceIn(0.6f, 4.0f)
+        paletteIndex = palette.coerceIn(0, 3)
+        postInvalidateOnAnimation()
+    }
+
+    /**
+     * 驱动气泡：横向(左右) 由侧向加速度/yaw 驱动，纵向(前后) 由 GPS 有符号加速度驱动。
+     * - 车左转 → 气泡向右流；右转 → 向左流
+     * - 车速在涨(forwardAccel>0) → 气泡向屏幕下方流；车速在掉 → 向上流（与车辆运动反向）
+     * - 静止：收回各自竖列并渐隐
+     * @param forwardAccel 沿行驶方向的有符号加速度（m/s²），由 GPS 速度趋势算出，跟手机摆放无关
+     */
+    fun updateMotion(x: Float, forwardAccel: Float, magnitude: Float, yawRate: Float, isStationary: Boolean) {
+        val gain = sensitivity / 2.4f
+        stationary = isStationary
+        if (stationary) {
+            targetX = 0f
+            targetY = 0f
+            targetTurn = 0f
+            targetAlpha = 0f
+            motionLevel = 0f
+        } else {
+            val turnGain = sensitivity * 0.50f
+            targetTurn = (yawRate * turnGain).coerceIn(-1.0f, 1.0f)
+            targetX = ((-x / 3.2f) * gain + targetTurn).coerceIn(-1.0f, 1.0f)
+            // 纵向：与车辆前后运动反向。车速上升(forwardAccel>0) 时气泡向屏幕下方(+y)流
+            // 分母 2.4 适配 m/s² 量级，让常见的 1~3 m/s² 落在有辨识度的区间
+            targetY = ((forwardAccel / 2.4f) * gain).coerceIn(-1.0f, 1.0f)
+            val level = (0.55f + magnitude * 0.30f).coerceIn(0f, 1f)
+            motionLevel += (level - motionLevel) * 0.15f
+            targetAlpha = 1f
+        }
+        postInvalidateOnAnimation()
+    }
+
+    private fun seedParticles(w: Float, h: Float) {
+        particles.clear()
+        val random = Random(42)
+        repeat(10) { i ->
+            val ty = (i + 0.5f) / 10f
+            particles += Particle(
+                x = (0.045f + random.nextFloat() * 0.09f) * w,
+                y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
+                alpha = 0f,
+                side = -1,
+                driftY = (random.nextFloat() - 0.5f) * dp(6f),
+                phase = random.nextFloat() * 6.28f,
+                sizeAmplitude = 0.03f + random.nextFloat() * 0.03f
+            )
+        }
+        repeat(10) { i ->
+            val ty = (i + 0.5f) / 10f
+            particles += Particle(
+                x = (0.475f + random.nextFloat() * 0.05f) * w,
+                y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
+                alpha = 0f,
+                side = 0,
+                driftY = (random.nextFloat() - 0.5f) * dp(6f),
+                phase = random.nextFloat() * 6.28f,
+                sizeAmplitude = 0.03f + random.nextFloat() * 0.03f
+            )
+        }
+        repeat(10) { i ->
+            val ty = (i + 0.5f) / 10f
+            particles += Particle(
+                x = (0.865f + random.nextFloat() * 0.09f) * w,
+                y = ty * h + (random.nextFloat() - 0.5f) * dp(34f),
+                radius = dp(7.5f + random.nextFloat() * 1.5f),
+                alpha = 0f,
+                side = +1,
+                driftY = (random.nextFloat() - 0.5f) * dp(6f),
+                phase = random.nextFloat() * 6.28f,
+                sizeAmplitude = 0.03f + random.nextFloat() * 0.03f
+            )
+        }
+        fieldWidth = w
+        fieldHeight = h
+        lastFrameNanos = 0L
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val w = width.toFloat()
+        val h = height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        if (particles.isEmpty() || w != fieldWidth || h != fieldHeight) seedParticles(w, h)
+
+        val now = System.nanoTime()
+        val dt = if (lastFrameNanos == 0L) 0.016f
+            else ((now - lastFrameNanos) / 1_000_000_000f).coerceIn(0.001f, 0.042f)
+        lastFrameNanos = now
+        elapsed += dt
+
+        // 速度场：更慢的阻尼 → 运动更顺，不生硬
+        val response = 1f - exp(-dt * 2.4f)
+        flowX += (targetX - flowX) * response
+        flowY += (targetY - flowY) * response
+        flowTurn += (targetTurn - flowTurn) * response
+        val velocityX = (flowX + flowTurn) * dp(190f)
+        val velocityY = flowY * dp(210f)
+
+        fill.color = colors[paletteIndex]
+
+        val leftHomeX = 0.055f * w
+        val rightHomeX = 0.945f * w
+        val middleHomeX = 0.5f * w
+        val homeFollow = 1f - exp(-dt * 2.2f)
+
+        particles.forEach { p ->
+            // 位置：静止收回各自竖位；运动时全屏自由流动，不做半屏限制
+            if (stationary) {
+                val home = when (p.side) {
+                    -1 -> leftHomeX
+                    +1 -> rightHomeX
+                    else -> middleHomeX
+                }
+                p.x += (home - p.x) * homeFollow
+            } else {
+                p.x += velocityX * dt
+            }
+
+            // 出屏后从另一侧绕回，不卡在任何边界
+            val margin = p.radius * 2f
+            if (p.x < -margin) p.x = w + margin
+            if (p.x > w + margin) p.x = -margin
+
+            // 纵向：前后反向流动（加速向下流、减速向上流）+ 极缓呼吸
+            p.y += (velocityY + p.driftY * sin(elapsed * 0.45f + p.phase) * 0.5f) * dt
+            // 上下出屏后从另一侧绕回
+            if (p.y < -margin) p.y = h + margin
+            if (p.y > h + margin) p.y = -margin
+
+            // 渐隐：按目标透明度平滑过渡（静止淡出、运动淡入）
+            p.alpha += (targetAlpha - p.alpha) * (1f - exp(-dt * 2.6f))
+
+            // 贴边额外渐隐，让收进去的气泡自然消失；中间竖列不靠边，不做边距渐隐
+            val edgeScale = when {
+                p.side < 0 -> (p.x / (0.075f * w)).coerceIn(0f, 1f)
+                p.side > 0 -> ((w - p.x) / (0.075f * w)).coerceIn(0f, 1f)
+                else -> 1f
+            }
+            val finalAlpha = (p.alpha * edgeScale).coerceIn(0f, 1f)
+
+            if (finalAlpha < 0.02f) return@forEach
+
+            val sizePulse = 1f + p.sizeAmplitude * sin(elapsed * 0.8f + p.phase)
+            fill.alpha = if (edgeScale < 1f) (edgeScale * 255f).toInt().coerceIn(0, 255) else 255
+            canvas.drawCircle(p.x, p.y, p.radius * sizePulse, fill)
+        }
+        postInvalidateOnAnimation()
+    }
+
+    private fun dp(value: Float) = value * resources.displayMetrics.density
+}
