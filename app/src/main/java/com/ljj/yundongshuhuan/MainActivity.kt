@@ -12,13 +12,12 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.widget.Toast
 import androidx.activity.compose.setContent
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -31,7 +30,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -39,19 +37,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.wzhdgithub.liquidglass.*
-import com.styropyr0.prismal.PrismalBackdrop
-import com.styropyr0.prismal.PrismalGlass
-import com.styropyr0.prismal.PrismalGlassSurface
-import com.styropyr0.prismal.components.PrismalGlassButton
-import com.styropyr0.prismal.components.PrismalGlassSlider
-import com.styropyr0.prismal.shapes.PrismalRoundedRectangle
-import com.styropyr0.prismal.sources.prismalGlassLayer
-import com.styropyr0.prismal.sources.rememberPrismalGlassLayer
+import io.github.suqi8.coui.kmp.basic.FloatingNavigationBar
+import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarItem
+import io.github.suqi8.coui.kmp.basic.Slider as CouiSlider
+import io.github.suqi8.coui.kmp.basic.Surface as CouiSurface
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.theme.ColorSchemeMode
+import io.github.suqi8.coui.kmp.theme.ThemeController
 import java.util.Locale
 
-private val Palette = listOf(Color(0xFF00D9FF), Color(0xFFFF6D00), Color(0xFFB6FF00), Color(0xFFB000FF))
-private val PaletteNames = listOf("亮青", "烈橙", "荧光绿", "电紫")
+private val Palette = listOf(Color(0xFF2787D9), Color(0xFFE47B42), Color(0xFF65A77B), Color(0xFF8872C8))
+private val PaletteNames = listOf("海盐蓝", "暖橙", "薄荷绿", "暮紫")
 
 class MainActivity : ComponentActivity() {
     var status by mutableStateOf("准备就绪"); private set
@@ -251,48 +247,56 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+
 @Composable
 private fun MotionGuardApp(activity: MainActivity) {
     var tab by remember { mutableIntStateOf(0) }
     val systemDark = isSystemInDarkTheme()
     val dark = when (activity.themeMode) { 1 -> false; 2 -> true; else -> systemDark }
-    val glass = remember { runCatching { isGlassBlurSupported() }.getOrDefault(false) }
+    val mode = when (activity.themeMode) {
+        1 -> ColorSchemeMode.Light
+        2 -> ColorSchemeMode.Dark
+        else -> ColorSchemeMode.System
+    }
+    val controller = remember(mode) { ThemeController(mode) }
     val scheme = if (dark) darkColorScheme(
-        primary = Color(0xFFD0D0D0), secondary = Color(0xFF9EB8AA), background = Color(0xFF151515),
-        surface = Color(0xFF222222), surfaceVariant = Color(0xFF303030),
-        onBackground = Color(0xFFF0F0F0), onSurface = Color(0xFFF0F0F0), onSurfaceVariant = Color(0xFFAAAAAA)
+        primary = Color(0xFF9CCBFA), onPrimary = Color(0xFF08243D),
+        secondary = Color(0xFFB8C9D9), background = Color(0xFF101318),
+        surface = Color(0xFF1B2027), surfaceVariant = Color(0xFF292F38),
+        onBackground = Color(0xFFF1F3F6), onSurface = Color(0xFFF1F3F6),
+        onSurfaceVariant = Color(0xFFABB3BE)
     ) else lightColorScheme(
-        primary = Color(0xFF454545), secondary = Color(0xFF648675), background = Color(0xFFF3F2EF),
-        surface = Color(0xFFFFFFFF), surfaceVariant = Color(0xFFE8E7E3),
-        onBackground = Color(0xFF242424), onSurface = Color(0xFF242424), onSurfaceVariant = Color(0xFF777670)
+        primary = Color(0xFF276FAE), onPrimary = Color.White,
+        secondary = Color(0xFF587B9A), background = Color(0xFFF3F5F7),
+        surface = Color.White, surfaceVariant = Color(0xFFE8EDF2),
+        onBackground = Color(0xFF171B20), onSurface = Color(0xFF171B20),
+        onSurfaceVariant = Color(0xFF68727D)
     )
-    MaterialTheme(colorScheme = scheme) {
-        GlassShell(glass = glass, darkTheme = dark,
-            items = listOf(GlassBarItem(Icons.Rounded.Home, "首页"), GlassBarItem(Icons.Rounded.Settings, "设置")),
-            selectedIndex = tab, onSelect = { tab = it }, snackbarHost = {},
-            fallbackBar = {
-                NavigationBar(containerColor = MaterialTheme.colorScheme.surface) {
-                    NavigationBarItem(tab == 0, { tab = 0 }, icon = { Icon(Icons.Rounded.Home, null) }, label = { Text("首页") })
-                    NavigationBarItem(tab == 1, { tab = 1 }, icon = { Icon(Icons.Rounded.Settings, null) }, label = { Text("设置") })
+    COUITheme(controller = controller) {
+        MaterialTheme(colorScheme = scheme) {
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        if (dark) listOf(Color(0xFF101318), Color(0xFF171D25), Color(0xFF101318))
+                        else listOf(Color(0xFFF4F6F8), Color(0xFFEFF3F6), Color(0xFFF5F6F7))
+                    )
+                )
+            ) {
+                AnimatedContent(
+                    targetState = tab,
+                    modifier = Modifier.fillMaxSize().padding(bottom = 94.dp),
+                    label = "coloros17-page-transition"
+                ) { page ->
+                    if (page == 0) HomePage(activity) else SettingsPage(activity)
                 }
-            }
-        ) { padding ->
-            val backdrop = rememberPrismalGlassLayer()
-            Box(Modifier.fillMaxSize()) {
-                Box(
-                    Modifier.fillMaxSize()
-                        .background(Brush.linearGradient(
-                            if (dark) listOf(Color(0xFF10151B), Color(0xFF20252C), Color(0xFF15191F))
-                            else listOf(Color(0xFFE8EDF0), Color(0xFFF7F5F0), Color(0xFFE9E9E5))
-                        ))
-                        .prismalGlassLayer(backdrop)
+                FloatingNavigationBar(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 2.dp),
+                    horizontalOutSidePadding = 30.dp,
+                    defaultWindowInsetsPadding = true,
+                    materialEffect = true
                 ) {
-                    Box(Modifier.align(Alignment.TopStart).padding(start = 28.dp, top = 90.dp).size(190.dp).clip(CircleShape).background(Color(0xFF8EAFA7).copy(alpha = .18f)))
-                    Box(Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 90.dp).size(230.dp).clip(CircleShape).background(Color(0xFF9A9FC0).copy(alpha = .16f)))
-                }
-                AnimatedContent(tab, label = "main-page") { page ->
-                    if (page == 0) HomePage(activity, backdrop, Modifier.padding(padding))
-                    else SettingsPage(activity, backdrop, Modifier.padding(padding))
+                    FloatingNavigationBarItem(tab == 0, { tab = 0 }, Icons.Rounded.Home, "首页")
+                    FloatingNavigationBarItem(tab == 1, { tab = 1 }, Icons.Rounded.Tune, "设置")
                 }
             }
         }
@@ -300,187 +304,173 @@ private fun MotionGuardApp(activity: MainActivity) {
 }
 
 @Composable
-private fun GlassPanel(
-    backdrop: PrismalBackdrop,
+private fun CouiCard(
     modifier: Modifier = Modifier,
-    radius: Dp = 24.dp,
-    content: @Composable BoxScope.() -> Unit
+    radius: Dp = 25.dp,
+    content: @Composable ColumnScope.() -> Unit
 ) {
-    PrismalGlassSurface(
-        backdrop = backdrop,
-        modifier = modifier,
-        shape = { PrismalRoundedRectangle(radius) },
-        tint = MaterialTheme.colorScheme.surface,
-        tintAlpha = if (MaterialTheme.colorScheme.background == Color(0xFF151515)) .18f else .20f,
-        blurRadius = 13.dp,
-        saturation = 1.7f,
-        refractionHeightPx = 18f,
-        refractionAmountPx = 28f,
-        chromaticAberration = .10f,
-        content = content
-    )
+    CouiSurface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(radius),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.5.dp
+    ) { Column(content = content) }
 }
 
 @Composable
-private fun HomePage(a: MainActivity, backdrop: PrismalBackdrop, modifier: Modifier = Modifier) {
+private fun PageHeader(title: String, subtitle: String, trailing: @Composable (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp,
+                fontWeight = FontWeight.Bold, letterSpacing = (-0.6).sp)
+            Text(subtitle, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
+        }
+        trailing?.invoke()
+    }
+}
+
+@Composable
+private fun HomePage(a: MainActivity) {
     val accent = Palette[a.paletteIndex]
     Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp).padding(top = 25.dp, bottom = 112.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp)
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp).padding(top = 26.dp, bottom = 26.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("MOTION  /  GUARD", color = MaterialTheme.colorScheme.primary, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.SemiBold)
-                Text("晕动舒缓", color = MaterialTheme.colorScheme.onSurface, fontSize = 31.sp, fontWeight = FontWeight.Bold)
-                Text("让视觉拥有稳定的运动参照", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-            }
-            PrismalGlassSurface(
-                backdrop = backdrop, modifier = Modifier.size(52.dp),
-                shape = { PrismalRoundedRectangle(18.dp) }, tint = accent, tintAlpha = .22f
-            ) {
+        PageHeader("晕动舒缓", "让视觉拥有稳定的运动参照") {
+            CouiSurface(Modifier.size(52.dp), shape = RoundedCornerShape(18.dp), color = accent.copy(alpha = .13f)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Icon(Icons.Rounded.Shield, null, tint = accent, modifier = Modifier.size(25.dp))
                 }
             }
         }
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 27.dp) {
-            Box(Modifier.fillMaxWidth().height(210.dp)) {
-                val previewDots = listOf(
-                    0.10f to 0.18f, 0.22f to 0.32f, 0.38f to 0.13f, 0.66f to 0.22f, 0.88f to 0.16f,
-                    0.14f to 0.55f, 0.31f to 0.72f, 0.73f to 0.61f, 0.91f to 0.48f,
-                    0.08f to 0.84f, 0.25f to 0.91f, 0.48f to 0.83f, 0.69f to 0.91f, 0.86f to 0.78f,
-                    0.53f to 0.37f, 0.40f to 0.57f, 0.62f to 0.49f
-                )
-                previewDots.forEachIndexed { i, point ->
-                    Box(
-                        Modifier.offset(x = (point.first * 320f).dp, y = (point.second * 190f).dp)
-                            .size((5 + i % 3 * 2).dp)
-                            .background(accent, CircleShape)
-                    )
-                }
-                Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("动态粒子场", color = MaterialTheme.colorScheme.onSurface, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-                    Text("MOTION CUES", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp, letterSpacing = 2.sp)
-                }
-                Text("LIVE PREVIEW", Modifier.align(Alignment.BottomStart).padding(16.dp), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 9.sp, letterSpacing = 1.5.sp)
-            }
-        }
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 24.dp) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CouiCard(radius = 28.dp) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(9.dp).clip(CircleShape).background(if (a.running) Color(0xFF6FA88B) else MaterialTheme.colorScheme.onSurfaceVariant))
-                    Spacer(Modifier.width(9.dp))
-                    Text(if (a.running) "运行中" else "尚未启动", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.weight(1f))
-                    Text(a.status, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("运动视觉提示", fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                        Text("MOTION CUES", fontSize = 10.sp, letterSpacing = 1.8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Surface(
+                        color = if (a.running) Color(0xFFDCF3E5) else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = CircleShape
+                    ) {
+                        Row(Modifier.padding(horizontal = 11.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(7.dp).background(if (a.running) Color(0xFF29965C) else MaterialTheme.colorScheme.onSurfaceVariant, CircleShape))
+                            Spacer(Modifier.width(7.dp))
+                            Text(if (a.running) "运行中" else "未启动", fontSize = 11.sp, fontWeight = FontWeight.Medium,
+                                color = if (a.running) Color(0xFF237A4C) else MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
-                PrismalGlassButton(
+                MotionPreview(accent)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(a.status, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                    Text("实时状态", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+                CouiSurface(
                     onClick = a::toggleMonitor,
-                    backdrop = backdrop,
-                    modifier = Modifier.fillMaxWidth(),
-                    height = 54.dp,
-                    shape = { PrismalRoundedRectangle(18.dp) },
-                    tint = if (a.running) MaterialTheme.colorScheme.surfaceVariant else Palette[a.paletteIndex],
-                    tintAlpha = .28f,
-                    contentPadding = PaddingValues(horizontal = 18.dp)
+                    modifier = Modifier.fillMaxWidth().height(54.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    color = if (a.running) MaterialTheme.colorScheme.surfaceVariant else accent,
+                    shadowElevation = if (a.running) 0.dp else 2.dp
                 ) {
-                    Icon(if (a.running) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, null, tint = MaterialTheme.colorScheme.onSurface)
-                    Text(if (a.running) "停止屏幕气泡" else "开启屏幕气泡", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                        Icon(if (a.running) Icons.Rounded.Stop else Icons.Rounded.PlayArrow, null,
+                            tint = if (a.running) MaterialTheme.colorScheme.onSurface else Color.White)
+                        Spacer(Modifier.width(9.dp))
+                        Text(if (a.running) "停止屏幕气泡" else "开启屏幕气泡",
+                            color = if (a.running) MaterialTheme.colorScheme.onSurface else Color.White,
+                            fontWeight = FontWeight.Bold)
+                    }
                 }
                 Text("动态气泡随设备运动流动，不拦截触摸操作。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
             }
         }
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 24.dp) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        CouiCard {
+            Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Speed, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(10.dp))
-                    Text("实时运动信息", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.Speed, null, tint = accent)
+                    Spacer(Modifier.width(9.dp))
+                    Text("实时运动信息", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                     Spacer(Modifier.weight(1f))
-                    Text(a.status, color = if (a.status == "静止") MaterialTheme.colorScheme.onSurfaceVariant else Palette[a.paletteIndex], fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    Text(a.status, color = accent, fontWeight = FontWeight.SemiBold, fontSize = 11.sp)
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    InfoCell("横滚", "${a.roll.toInt()}°", backdrop, Modifier.weight(1f))
-                    InfoCell("俯仰", "${a.pitch.toInt()}°", backdrop, Modifier.weight(1f))
-                    InfoCell("方位", "${a.azimuth.toInt()}°", backdrop, Modifier.weight(1f))
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    InfoCell("横滚", "\${a.roll.toInt()}°", Modifier.weight(1f))
+                    InfoCell("俯仰", "\${a.pitch.toInt()}°", Modifier.weight(1f))
+                    InfoCell("方位", "\${a.azimuth.toInt()}°", Modifier.weight(1f))
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (a.yawRate > 0.1f) Icons.Rounded.TurnLeft else if (a.yawRate < -0.1f) Icons.Rounded.TurnRight else Icons.Rounded.Explore, null, tint = Palette[a.paletteIndex], modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("转向角速度", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    Spacer(Modifier.weight(1f))
-                    Text(String.format(Locale.US, "%.2f rad/s", a.yawRate), color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                }
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        if (a.forwardAccel > 0.3f) Icons.Rounded.TrendingUp
-                        else if (a.forwardAccel < -0.3f) Icons.Rounded.TrendingDown
-                        else Icons.Rounded.Timeline,
-                        null, tint = Palette[a.paletteIndex], modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("纵向加速度（GPS）", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    Spacer(Modifier.weight(1f))
-                    Text(
-                        String.format(Locale.US, "%+.2f m/s²", a.forwardAccel),
-                        color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium
-                    )
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.GpsFixed, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("定位方式", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    Spacer(Modifier.weight(1f))
-                    Text(a.gpsProvider, color = if (a.gpsProvider == "GPS 定位") Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    InfoCell("纬度", a.gpsLat, backdrop, Modifier.weight(1f))
-                    InfoCell("经度", a.gpsLng, backdrop, Modifier.weight(1f))
-                    InfoCell("速度", a.gpsSpeed, backdrop, Modifier.weight(1f))
+                MetricRow(if (a.yawRate > 0.1f) Icons.Rounded.TurnLeft else if (a.yawRate < -0.1f) Icons.Rounded.TurnRight else Icons.Rounded.Explore,
+                    "转向角速度", String.format(Locale.US, "%.2f rad/s", a.yawRate))
+                MetricRow(if (a.forwardAccel > 0.3f) Icons.Rounded.TrendingUp else if (a.forwardAccel < -0.3f) Icons.Rounded.TrendingDown else Icons.Rounded.Timeline,
+                    "纵向加速度（GPS）", String.format(Locale.US, "%+.2f m/s²", a.forwardAccel))
+                MetricRow(Icons.Rounded.GpsFixed, "定位方式", a.gpsProvider)
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                    InfoCell("纬度", a.gpsLat, Modifier.weight(1f))
+                    InfoCell("经度", a.gpsLng, Modifier.weight(1f))
+                    InfoCell("速度", a.gpsSpeed, Modifier.weight(1f))
                 }
                 Text("定位由 GPS 卫星或网络提供，仅用于显示，不会上传。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            SummaryTile("灵敏度", String.format(Locale.US, "%.1f×", a.sensitivity), Icons.Rounded.Tune, backdrop, Modifier.weight(1f))
-            SummaryTile("气泡主题", PaletteNames[a.paletteIndex], Icons.Rounded.Palette, backdrop, Modifier.weight(1f))
+            SummaryTile("灵敏度", String.format(Locale.US, "%.1f×", a.sensitivity), Icons.Rounded.Tune, Modifier.weight(1f))
+            SummaryTile("气泡主题", PaletteNames[a.paletteIndex], Icons.Rounded.Palette, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun InfoCell(title: String, value: String, backdrop: PrismalBackdrop, modifier: Modifier = Modifier) {
-    PrismalGlassSurface(
-        backdrop = backdrop,
-        modifier = modifier,
-        shape = { PrismalRoundedRectangle(14.dp) },
-        tint = MaterialTheme.colorScheme.surfaceVariant,
-        tintAlpha = .14f,
-        blurRadius = 7.dp
-    ) {
-        Column(Modifier.padding(horizontal = 10.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+private fun MotionPreview(accent: Color) {
+    val points = listOf(.08f to .22f, .19f to .42f, .31f to .18f, .44f to .68f, .56f to .31f,
+        .69f to .58f, .82f to .22f, .91f to .70f, .13f to .82f, .36f to .88f, .62f to .86f, .78f to .91f)
+    Box(Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(20.dp))
+        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .72f))) {
+        points.forEachIndexed { index, point ->
+            Box(
+                Modifier.align(Alignment.TopStart)
+                    .padding(start = (point.first * 270f).dp, top = (point.second * 105f).dp)
+                    .size((5 + index % 3 * 2).dp)
+                    .background(accent.copy(alpha = .78f - (index % 3) * .12f), CircleShape)
+            )
+        }
+        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("动态粒子场", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            Text("LIVE MOTION PREVIEW", fontSize = 9.sp, letterSpacing = 1.5.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun InfoCell(title: String, value: String, modifier: Modifier = Modifier) {
+    CouiSurface(modifier, shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+        Column(Modifier.padding(horizontal = 8.dp, vertical = 11.dp), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-            Spacer(Modifier.height(4.dp))
             Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
 
 @Composable
-private fun BubbleDot(color: Color, size: Int) {
-    Box(Modifier.size((size * 0.72f).dp).background(color, CircleShape))
+private fun MetricRow(icon: ImageVector, label: String, value: String) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(9.dp))
+        Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+        Spacer(Modifier.weight(1f))
+        Text(value, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+    }
 }
 
 @Composable
-private fun SummaryTile(title: String, value: String, icon: ImageVector, backdrop: PrismalBackdrop, modifier: Modifier = Modifier) {
-    GlassPanel(backdrop, modifier = modifier, radius = 19.dp) {
+private fun SummaryTile(title: String, value: String, icon: ImageVector, modifier: Modifier = Modifier) {
+    CouiSurface(modifier, shape = RoundedCornerShape(19.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp) {
         Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(9.dp))
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
             }
@@ -489,115 +479,103 @@ private fun SummaryTile(title: String, value: String, icon: ImageVector, backdro
 }
 
 @Composable
-private fun SettingsPage(a: MainActivity, backdrop: PrismalBackdrop, modifier: Modifier = Modifier) {
-    Column(
-        modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(horizontal = 22.dp).padding(top = 27.dp, bottom = 120.dp),
-        verticalArrangement = Arrangement.spacedBy(17.dp)
-    ) {
-        Text("设置", color = MaterialTheme.colorScheme.onSurface, fontSize = 30.sp, fontWeight = FontWeight.Bold)
-        Text("调整气泡反馈与应用行为", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp)
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 23.dp) {
-            Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Text("外观模式", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+private fun SettingsPage(a: MainActivity) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+        .padding(horizontal = 20.dp).padding(top = 27.dp, bottom = 28.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        PageHeader("设置", "调整运动反馈与应用行为")
+        CouiCard {
+            Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
+                Text("外观模式", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("跟随系统", "浅色", "深色").forEachIndexed { index, label ->
-                        PrismalGlassSurface(
-                            backdrop = backdrop,
-                            modifier = Modifier.weight(1f).height(42.dp),
-                            shape = { PrismalRoundedRectangle(14.dp) },
+                        CouiSurface(
                             onClick = { a.applyThemeMode(index) },
-                            tint = if (a.themeMode == index) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                            tintAlpha = if (a.themeMode == index) .30f else .12f
+                            modifier = Modifier.weight(1f).height(43.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (a.themeMode == index) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
                         ) {
                             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(label, color = MaterialTheme.colorScheme.onSurface, fontSize = 11.sp)
+                                Text(label, fontSize = 11.sp,
+                                    fontWeight = if (a.themeMode == index) FontWeight.SemiBold else FontWeight.Normal,
+                                    color = if (a.themeMode == index) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
                 }
-                Text("不使用系统动态取色，保持中性灰阶外观。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("使用中性灰阶与系统明暗模式，不启用动态取色。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
         }
-
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 23.dp) {
-            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(10.dp))
-                    Text("运动反馈", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("灵敏度", color = MaterialTheme.colorScheme.onSurface)
-                    Spacer(Modifier.weight(1f))
-                    Text(String.format(Locale.US, "%.1f×", a.sensitivity), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
-                }
-                PrismalGlassSlider(
-                    value = { a.sensitivity },
-                    onValueChange = { a.updateConfig(sensitivityValue = it) },
-                    valueRange = .6f..4.0f,
-                    visibilityThreshold = .01f,
-                    backdrop = backdrop,
-                    modifier = Modifier.fillMaxWidth().height(48.dp)
-                )
-                Text("数值越高，气泡对设备运动的响应越明显。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-            }
-        }
-
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 23.dp) {
+        CouiCard {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(13.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.primary)
-                    Spacer(Modifier.width(10.dp))
-                    Text("气泡颜色", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Icon(Icons.Rounded.Tune, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(9.dp))
+                    Text("运动反馈", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("灵敏度", fontWeight = FontWeight.Medium)
+                        Text("调整运动变化对应的视觉反馈强度", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                    }
+                    Text(String.format(Locale.US, "%.1f×", a.sensitivity), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+                CouiSlider(value = a.sensitivity, onValueChange = { a.updateConfig(sensitivityValue = it) },
+                    valueRange = .6f..4.0f, modifier = Modifier.fillMaxWidth().height(40.dp), material = true)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("0.6×", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                    Text("4.0×", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
+                }
+            }
+        }
+        CouiCard {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Palette, null, tint = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.width(9.dp))
+                    Text("气泡颜色", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
                     Palette.forEachIndexed { index, color ->
-                        PrismalGlassSurface(
-                            backdrop = backdrop,
-                            modifier = Modifier.weight(1f).height(78.dp),
-                            shape = { PrismalRoundedRectangle(14.dp) },
+                        CouiSurface(
                             onClick = { a.updateConfig(colorValue = index) },
-                            tint = color,
-                            tintAlpha = if (a.paletteIndex == index) .38f else .15f,
-                            blurRadius = 8.dp
+                            modifier = Modifier.weight(1f).height(82.dp),
+                            shape = RoundedCornerShape(17.dp),
+                            color = if (a.paletteIndex == index) color.copy(alpha = .18f) else MaterialTheme.colorScheme.surfaceVariant
                         ) {
-                            Column(Modifier.fillMaxSize().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                                Box(Modifier.size(18.dp).clip(CircleShape).background(color).border(1.dp, Color.White.copy(alpha = .65f), CircleShape))
-                                Spacer(Modifier.height(5.dp))
+                            Column(Modifier.fillMaxSize().padding(vertical = 8.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center) {
+                                Box(Modifier.size(20.dp).background(color, CircleShape).border(1.dp, Color.White.copy(alpha = .8f), CircleShape))
+                                Spacer(Modifier.height(6.dp))
                                 Text(PaletteNames[index], color = MaterialTheme.colorScheme.onSurface, fontSize = 10.sp)
-                                if (a.paletteIndex == index) Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(13.dp))
+                                if (a.paletteIndex == index) Icon(Icons.Rounded.Check, null, tint = color, modifier = Modifier.size(13.dp))
                             }
                         }
                     }
                 }
             }
         }
-
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 23.dp) {
+        CouiCard {
             Column {
                 SettingRow(Icons.Rounded.Shield, "悬浮窗权限", "管理屏幕边缘气泡显示权限") {
-                    a.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${a.packageName}")))
+                    a.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:\${a.packageName}")))
                 }
             }
         }
-        GlassPanel(backdrop, modifier = Modifier.fillMaxWidth(), radius = 19.dp) {
-            Column(Modifier.padding(17.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("外观能力", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                Text(
-                    if (PrismalGlass.supportsRefraction) "PrismalAGSL：完整折射与色散可用"
-                    else if (PrismalGlass.supportsBackdropBlur) "Prismal：背景模糊可用，折射效果按系统能力降级"
-                    else "Prismal：使用兼容磨砂玻璃效果",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp
-                )
-                Text("版本 ${a.packageManager.getPackageInfo(a.packageName, 0).versionName ?: "未知"}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+        CouiCard {
+            Column(Modifier.padding(19.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Text("关于与开源", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text("界面采用 COUI 17 风格组件：浮岛导航、统一卡片表面、交互式滑块与触摸反馈。COUI 以 Apache-2.0 许可发布。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                Text("COUI 17 开源项目", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
+                    modifier = Modifier.clickable { a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/suqi8/coui"))) })
+                Text("COUI 17 组件文档", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
+                    modifier = Modifier.clickable { a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://costben.github.io/coui17/zh_CN/"))) })
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = .08f))
-                Text("开源许可与第三方声明", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
-                Text("本应用按 GNU GPL-3.0-or-later 发布。全场景液态玻璃采用 PrismalAGSL（MIT）；底部导航继续采用 LiquidGlassBar（GPL-3.0-or-later），其 NOTICE 列明 KernelSU、AndroidLiquidGlass 与 Miuix 的第三方组件许可。", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                Text("PrismalAGSL 项目与 MIT 许可", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
-                    modifier = Modifier.clickable { a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/styropyr0/PrismalAGSL"))) })
-                Text("LiquidGlassBar 项目与完整第三方版权、许可清单", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
-                    modifier = Modifier.clickable { a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/wzhdgithub/LiquidGlassBar"))) })
+                Text("版本 \${a.packageManager.getPackageInfo(a.packageName, 0).versionName ?: "未知"}",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text("本应用按 GNU GPL-3.0-or-later 发布。COUI（Apache-2.0）与 AndroidX / Jetpack Compose（Apache-2.0）按各自许可使用。",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Text("本应用源码及 GPL-3.0 许可", color = MaterialTheme.colorScheme.primary, fontSize = 12.sp,
                     modifier = Modifier.clickable { a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/liangfangfa0-afk/MotionGuard"))) })
             }
@@ -607,7 +585,8 @@ private fun SettingsPage(a: MainActivity, backdrop: PrismalBackdrop, modifier: M
 
 @Composable
 private fun SettingRow(icon: ImageVector, title: String, subtitle: String, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 17.dp),
+        verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(13.dp))
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {

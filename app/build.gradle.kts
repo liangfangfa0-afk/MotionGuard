@@ -10,8 +10,8 @@ android {
         applicationId = "com.ljj.yundongshuhuan"
         minSdk = 26
         targetSdk = 35
-        versionCode = 190
-        versionName = "1.90"
+        versionCode = 191
+        versionName = "1.91"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -31,6 +31,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation(project(":liquidglass"))
-    implementation(project(":prismal"))
+    implementation("io.github.suqi8.coui.kmp:coui-ui:2.0.0")
 }
