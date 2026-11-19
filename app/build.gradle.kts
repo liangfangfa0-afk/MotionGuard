@@ -31,5 +31,5 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-extended")
-    implementation("io.github.suqi8.coui.kmp:coui-ui:2.0.0")
+    implementation("io.github.suqi8.coui.kmp:coui-ui-android:1.2.0-SNAPSHOT")
 }
