@@ -37,8 +37,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import io.github.suqi8.coui.kmp.basic.FloatingNavigationBar
-import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarItem
+import io.github.suqi8.coui.kmp.basic.BottomFloatingNavigationBar
+import io.github.suqi8.coui.kmp.basic.BottomFloatingNavigationBarItem
+import io.github.suqi8.coui.kmp.basic.BottomFloatingNavigationBarDefaults
 import io.github.suqi8.coui.kmp.basic.Slider as CouiSlider
 import io.github.suqi8.coui.kmp.basic.Surface as CouiSurface
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -289,14 +290,22 @@ private fun MotionGuardApp(activity: MainActivity) {
                 ) { page ->
                     if (page == 0) HomePage(activity) else SettingsPage(activity)
                 }
-                FloatingNavigationBar(
-                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 2.dp),
-                    horizontalOutSidePadding = 30.dp,
-                    defaultWindowInsetsPadding = true,
-                    materialEffect = true
+                BottomFloatingNavigationBar(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .padding(bottom = BottomFloatingNavigationBarDefaults.navigationBarPadding())
                 ) {
-                    FloatingNavigationBarItem(tab == 0, { tab = 0 }, Icons.Rounded.Home, "首页")
-                    FloatingNavigationBarItem(tab == 1, { tab = 1 }, Icons.Rounded.Tune, "设置")
+                    BottomFloatingNavigationBarItem(
+                        selected = tab == 0,
+                        onClick = { tab = 0 },
+                        icon = Icons.Rounded.Home,
+                        label = "首页"
+                    )
+                    BottomFloatingNavigationBarItem(
+                        selected = tab == 1,
+                        onClick = { tab = 1 },
+                        icon = Icons.Rounded.Tune,
+                        label = "设置"
+                    )
                 }
             }
         }
@@ -521,7 +530,7 @@ private fun SettingsPage(a: MainActivity) {
                     Text(String.format(Locale.US, "%.1f×", a.sensitivity), color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 }
                 CouiSlider(value = a.sensitivity, onValueChange = { a.updateConfig(sensitivityValue = it) },
-                    valueRange = .6f..4.0f, modifier = Modifier.fillMaxWidth().height(40.dp), material = true)
+                    valueRange = .6f..4.0f, modifier = Modifier.fillMaxWidth().height(40.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("0.6×", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                     Text("4.0×", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
